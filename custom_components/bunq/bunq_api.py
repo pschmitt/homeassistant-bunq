@@ -23,6 +23,14 @@ from .exceptions import (
 )
 from .models import BunqStatus
 
+MONETARY_ACCOUNT_TYPES = [
+    "MonetaryAccountBank",
+    "MonetaryAccountJoint",
+    "MonetaryAccountLight",
+    "MonetaryAccountSavings",
+    "MonetaryAccountExternal",
+]
+
 
 class BunqApi:
     """main api class"""
@@ -148,7 +156,17 @@ class BunqApi:
         await self._update_accounts()
 
         for account in self.status.accounts:
-            await self.update_account_transactions(account["id"])
+            try:
+                await self.update_account_transactions(account["id"])
+            except BunqApiError as error:
+                account_type = account.get("_account_type", "unknown")
+                LOGGER.warning(
+                    "Could not fetch transactions for account %s (type: %s): %s",
+                    account["id"],
+                    account_type,
+                    error,
+                )
+                self.status.update_account_transactions(account["id"], [])
 
         await self._update_cards()
 
@@ -194,18 +212,11 @@ class BunqApi:
         accounts = []
         for value in data["Response"]:
             for account_type in [
-                key
-                for key in value
-                if key
-                in [
-                    "MonetaryAccountBank",
-                    "MonetaryAccountJoint",
-                    "MonetaryAccountLight",
-                    "MonetaryAccountSavings",
-                ]
+                key for key in value if key in MONETARY_ACCOUNT_TYPES
             ]:
                 item = value[account_type]
                 if "status" in item and item["status"] == "ACTIVE":
+                    item["_account_type"] = account_type
                     accounts.append(item)
         self.status.update_accounts(accounts)
 
@@ -335,7 +346,6 @@ class BunqApi:
             LOGGER.debug("context already available")
             return
         self.keys = RSA.generate(2048)
-        # private_key_client = keys.export_key(format='PEM', passphrase=None, pkcs=8).decode('utf-8')
         public_key_client = (
             self.keys.publickey()
             .export_key(format="PEM", passphrase=None, pkcs=8)

@@ -5,9 +5,10 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import LOGGER
+from .const import DOMAIN, LOGGER
 
 
 class BunqCardSensor(CoordinatorEntity, SensorEntity):
@@ -30,6 +31,16 @@ class BunqCardSensor(CoordinatorEntity, SensorEntity):
             "card_id": str(card["id"]),
         }
         self._async_update_attrs()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        entry = self.coordinator.entry
+        return DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name="bunq",
+            manufacturer="bunq",
+            entry_type=DeviceEntryType.SERVICE,
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:

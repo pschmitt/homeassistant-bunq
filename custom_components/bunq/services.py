@@ -1,5 +1,5 @@
 import voluptuous as vol
-from custom_components.bunq.coordinator import BunqDataUpdateCoordinator
+from .coordinator import BunqDataUpdateCoordinator
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv

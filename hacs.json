@@ -1,5 +1,4 @@
 {
-  "name": "Bunq balance sensor",
-  "content_in_root": false,
+  "name": "bunq",
   "render_readme": true
 }
