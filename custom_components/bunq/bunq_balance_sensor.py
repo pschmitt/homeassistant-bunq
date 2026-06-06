@@ -70,6 +70,12 @@ class BunqBalanceSensor(CoordinatorEntity, SensorEntity):
         self._attr_extra_state_attributes["account_type"] = account.get(
             "_account_type", "MonetaryAccountBank"
         )
+        iban = next(
+            (a["value"] for a in account.get("alias", []) if a.get("type") == "IBAN"),
+            None,
+        )
+        if iban:
+            self._attr_extra_state_attributes["iban"] = iban
         self._load_transactions(transactions)
 
     def _load_transactions(self, transactions):
