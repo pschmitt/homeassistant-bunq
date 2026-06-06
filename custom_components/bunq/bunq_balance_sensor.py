@@ -3,6 +3,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
@@ -22,9 +23,10 @@ class BunqBalanceSensor(CoordinatorEntity, SensorEntity):
         self.entity_description = SensorEntityDescription(
             key=account["id"],
             device_class=SensorDeviceClass.MONETARY,
+            state_class=SensorStateClass.MEASUREMENT,
             icon="mdi:cash-multiple",
             name=account["description"],
-            unit_of_measurement=account["currency"],
+            native_unit_of_measurement=account["currency"],
         )
         self._attr_extra_state_attributes = {
             "account_id": self._attr_unique_id,
