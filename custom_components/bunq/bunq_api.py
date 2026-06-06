@@ -217,6 +217,22 @@ class BunqApi:
                 item = value[account_type]
                 if "status" in item and item["status"] == "ACTIVE":
                     item["_account_type"] = account_type
+                    if account_type == "MonetaryAccountExternal":
+                        # bunq always returns balance=0.00 for external accounts.
+                        # The real balance lives in open_banking_account.balance_booked.
+                        oba = (
+                            item.get("open_banking_account", {})
+                            .get("OpenBankingAccount", {})
+                        )
+                        booked = oba.get("balance_booked")
+                        if booked:
+                            LOGGER.debug(
+                                "External account %s: using balance_booked %s (was %s)",
+                                item.get("id"),
+                                booked,
+                                item.get("balance"),
+                            )
+                            item["balance"] = booked
                     accounts.append(item)
         self.status.update_accounts(accounts)
 
