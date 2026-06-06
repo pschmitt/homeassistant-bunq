@@ -156,6 +156,16 @@ class BunqApi:
         await self._update_accounts()
 
         for account in self.status.accounts:
+            if account.get("_account_type") == "MonetaryAccountExternal":
+                # bunq's public API exposes balance but not transaction history
+                # for open-banking (PSD2) accounts. The payment endpoint returns
+                # an empty list and all other known endpoints 404.
+                LOGGER.debug(
+                    "Skipping transaction fetch for external account %s (not available via public API)",
+                    account["id"],
+                )
+                self.status.update_account_transactions(account["id"], [])
+                continue
             try:
                 await self.update_account_transactions(account["id"])
             except BunqApiError as error:
