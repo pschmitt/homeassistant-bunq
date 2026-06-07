@@ -23,7 +23,7 @@ class BunqBalanceSensor(CoordinatorEntity, SensorEntity):
         self.entity_description = SensorEntityDescription(
             key=account["id"],
             device_class=SensorDeviceClass.MONETARY,
-            state_class=SensorStateClass.MEASUREMENT,
+            state_class=SensorStateClass.TOTAL,
             icon="mdi:cash-multiple",
             name=account["description"],
             native_unit_of_measurement=account["currency"],
