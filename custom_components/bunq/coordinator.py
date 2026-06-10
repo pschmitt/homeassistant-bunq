@@ -26,9 +26,7 @@ class BunqDataUpdateCoordinator(DataUpdateCoordinator):
 
         async def async_token_refresh() -> str:
             await session.async_ensure_token_valid()
-            token = session.token["access_token"]
-            LOGGER.debug(str(token))
-            return str(token)
+            return str(session.token["access_token"])
 
         allow_dynamic_ip = entry.options.get(CONF_ALLOW_DYNAMIC_IP, False)
 
@@ -41,7 +39,13 @@ class BunqDataUpdateCoordinator(DataUpdateCoordinator):
             allow_dynamic_ip=allow_dynamic_ip,
         )
 
-        super().__init__(hass, LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL)
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=entry,
+            name=DOMAIN,
+            update_interval=UPDATE_INTERVAL,
+        )
 
     async def _async_update_data(self) -> BunqStatus:
         try:

@@ -36,6 +36,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         del hass.data[DOMAIN][entry.entry_id]
+        if not hass.data[DOMAIN]:
+            for service in ("transfer", "link_account"):
+                hass.services.async_remove(DOMAIN, service)
     return unload_ok
 
 

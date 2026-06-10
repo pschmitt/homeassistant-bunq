@@ -1,6 +1,6 @@
-from json import dumps
-
 """Exceptions for the Bunq API."""
+
+from json import dumps
 
 
 class BunqApiError(Exception):

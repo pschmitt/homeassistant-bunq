@@ -2,14 +2,13 @@
 
 import asyncio
 import json
-import random
 import socket
+import uuid
 from base64 import b64encode
-from typing import Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, Optional
 
-import async_timeout
-from aiohttp import ClientError, ClientResponse, ClientSession, hdrs
-from Crypto.PublicKey import RSA
+from aiohttp import ClientError, ClientSession, hdrs
+from Cryptodome.PublicKey import RSA
 from Cryptodome.Hash import SHA256
 from Cryptodome.PublicKey.RSA import RsaKey
 from Cryptodome.Signature import PKCS1_v1_5
@@ -55,9 +54,7 @@ class BunqApi:
         self.request_timeout = request_timeout
         self.token = token
         self.allow_dynamic_ip = allow_dynamic_ip
-        LOGGER.debug("Session token: %s", token)
         self.token_refresh_method = token_refresh_method
-        self._request_id = self._get_request_id(20)
 
     async def close(self) -> None:
         """Close open client session."""
@@ -65,13 +62,7 @@ class BunqApi:
             await self._session.close()
             LOGGER.debug("Session closed")
 
-    def _get_request_id(self, length):
-        rid = ""
-        for _ in range(length - 1):
-            rid += str(random.randint(0, 10))
-        return rid
-
-    async def _request(self, method, uri, **kwargs) -> ClientResponse:
+    async def _request(self, method, uri, **kwargs) -> Any:
         """Make a request."""
         if self.token_refresh_method is not None:
             self.token = await self.token_refresh_method()
@@ -83,7 +74,6 @@ class BunqApi:
         signature = kwargs.pop("signature", "")
 
         LOGGER.debug("Executing %s API request to %s", method, url)
-        LOGGER.debug("With body %s", str(kwargs.get("json")))
 
         headers["Content-Type"] = "application/json"
         headers["User-Agent"] = "HomeAssistant"
@@ -93,16 +83,15 @@ class BunqApi:
         headers["X-Bunq-Client-Signature"] = signature
         if token is not None:
             headers["X-Bunq-Client-Authentication"] = token
-        headers["X-Bunq-Client-Request-Id"] = self._request_id
+        headers["X-Bunq-Client-Request-Id"] = str(uuid.uuid4())
 
-        LOGGER.debug("With headers: %s", str(headers))
         if self._session is None:
             self._session = ClientSession()
             LOGGER.debug("New session created")
             self._close_session = True
 
         try:
-            with async_timeout.timeout(self.request_timeout):
+            async with asyncio.timeout(self.request_timeout):
                 response = await self._session.request(
                     method,
                     url,
@@ -139,15 +128,11 @@ class BunqApi:
                 "Request to %s resulted in status 204. Your dataset could be out of date",
                 url,
             )
-            return
+            return {"Response": []}
 
         if "application/json" in content_type:
-            result = await response.json()
-            LOGGER.debug("Response: %s", str(result))
-            return result
-        result = await response.text()
-        LOGGER.debug("Response: %s", str(result))
-        return result
+            return await response.json()
+        return await response.text()
 
     async def update(self) -> BunqStatus:
         """update data from bunq"""
@@ -311,7 +296,7 @@ class BunqApi:
 
         card = self.status.get_card(card_id)
         if card is None:
-            raise f"card {card_id} not found"
+            raise BunqApiError(f"card {card_id} not found")
 
         pins = card["pin_code_assignment"]
         for pin in pins:
@@ -332,7 +317,7 @@ class BunqApi:
             signature=signature,
             data=str_body,
         )
-        LOGGER.debug("link account response", json.dumps(result))
+        LOGGER.debug("link account response: %s", result)
 
         return result
 
@@ -341,14 +326,14 @@ class BunqApi:
 
         to_account = self.status.get_account(to_account_id)
         if to_account is None:
-            raise f"target account {to_account} not found"
+            raise BunqApiError(f"target account {to_account_id} not found")
 
         if "alias" not in to_account or len(to_account["alias"]) == 0:
-            raise f"no alias found for {to_account}"
+            raise BunqApiError(f"no alias found for account {to_account_id}")
         alias = to_account["alias"][0]
 
         if "currency" not in to_account:
-            raise f"currency not found for {to_account}"
+            raise BunqApiError(f"currency not found for account {to_account_id}")
 
         body = {
             "amount": {"value": str(amount), "currency": to_account["currency"]},
@@ -364,7 +349,7 @@ class BunqApi:
             signature=signature,
             data=str_body,
         )
-        LOGGER.debug("transfer response", result)
+        LOGGER.debug("transfer response: %s", result)
         return result
 
     async def _setup_context(self):
@@ -383,7 +368,7 @@ class BunqApi:
             "/v1/installation",
             json={"client_public_key": public_key_client},
         )
-        LOGGER.debug("installation response: %s", installation)
+        LOGGER.debug("installation response received")
         installation_token = self._get_token(installation)
 
         body = {
@@ -393,10 +378,10 @@ class BunqApi:
         if self.allow_dynamic_ip:
             body["permitted_ips"] = ["*"]
             LOGGER.info("Registering device server with wildcard permitted_ips (dynamic IP mode enabled)")
-        device_server = await self._request(
+        await self._request(
             hdrs.METH_POST, "/v1/device-server", token=installation_token, json=body
         )
-        LOGGER.debug("device-server response: %s", device_server)
+        LOGGER.debug("device-server response received")
 
         body = {"secret": self.token}
         str_body = json.dumps(body)

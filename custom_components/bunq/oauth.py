@@ -102,4 +102,4 @@ class BunqOAuth2Implementation(AuthImplementation):
     async def _async_refresh_token(self, token: dict) -> dict:
         """Bunq does not provide a way to refresh the token."""
         LOGGER.debug("_async_refresh_token: bunq does not support token refresh, returning existing token")
-        return {**token, **token}
+        return dict(token)

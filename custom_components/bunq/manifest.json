@@ -5,7 +5,9 @@
 	"documentation": "https://github.com/pschmitt/homeassistant-bunq",
 	"issue_tracker": "https://github.com/pschmitt/homeassistant-bunq/issues",
 	"iot_class": "cloud_polling",
-	"requirements": [],
+	"requirements": [
+		"pycryptodomex>=3.0"
+	],
 	"codeowners": [
 		"@pschmitt"
 	],

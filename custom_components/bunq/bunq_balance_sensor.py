@@ -63,13 +63,13 @@ class BunqBalanceSensor(CoordinatorEntity, SensorEntity):
         account = self.coordinator.bunq.status.get_account(self._attr_unique_id)
         if account is None:
             LOGGER.debug("no account for id %s", str(self._attr_unique_id))
-            self._attr_enabled = False
+            self._attr_available = False
             return
 
         transactions = self.coordinator.bunq.status.account_transactions.get(
             str(self._attr_unique_id), []
         )
-        self._attr_enabled = True
+        self._attr_available = True
         self._attr_native_value = float(account["balance"]["value"])
         self._attr_extra_state_attributes["account_type"] = account.get(
             "_account_type", "MonetaryAccountBank"

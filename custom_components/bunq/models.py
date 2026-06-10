@@ -21,11 +21,12 @@ class BunqApiEnvironment(Enum):
 class BunqStatus:
     """Class to hold all bunq information"""
 
-    user_id: str = None
-    session_token: str = None
-    accounts: list = []
-    cards: list = []
-    account_transactions: dict = {}
+    def __init__(self) -> None:
+        self.user_id: str | None = None
+        self.session_token: str | None = None
+        self.accounts: list = []
+        self.cards: list = []
+        self.account_transactions: dict = {}
 
     def update_user(self, user_id, session_token):
         """Store user info."""
