@@ -68,22 +68,24 @@ class BunqOAuth2Implementation(AuthImplementation):
         redirect_uri = external_data["state"]["redirect_uri"]
         LOGGER.debug("async_resolve_external_data: redirect_uri=%s", redirect_uri)
 
-        token_base_url = ENVIRONMENT_URLS[ENVIRONMENT]["token_url"]
-        self.token_url = (
-            f"{token_base_url}"
-            f"?grant_type=authorization_code"
-            f"&client_id={self.client_id}"
-            f"&client_secret={self.client_secret}"
-            f"&code={external_data['code']}"
-            f"&redirect_uri={redirect_uri}"
-        )
+        # Send the grant parameters in the POST body, not the query string.
+        # _token_request() adds client_id/client_secret to the body itself, so
+        # embedding them (and the auth code) in the URL leaked secrets into any
+        # proxy/access log for no benefit. self.token_url already resolves to
+        # the configured token endpoint via the AuthImplementation property.
         LOGGER.debug(
-            "async_resolve_external_data: requesting token from %s (secret and code redacted)",
-            token_base_url,
+            "async_resolve_external_data: requesting token from %s",
+            ENVIRONMENT_URLS[ENVIRONMENT]["token_url"],
         )
 
         try:
-            token = await self._token_request({})
+            token = await self._token_request(
+                {
+                    "grant_type": "authorization_code",
+                    "code": external_data["code"],
+                    "redirect_uri": redirect_uri,
+                }
+            )
         except Exception as err:
             LOGGER.error("async_resolve_external_data: token request failed: %s", err, exc_info=True)
             raise
