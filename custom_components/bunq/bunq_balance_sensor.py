@@ -15,6 +15,10 @@ from .const import DOMAIN, LOGGER
 class BunqBalanceSensor(CoordinatorEntity, SensorEntity):
     """Setup bunq balance sensor."""
 
+    # The transactions list changes on every balance update and bloats the
+    # recorder DB. Keep it live for the UI but never persist it to history.
+    _unrecorded_attributes = frozenset({"transactions"})
+
     def __init__(self, coordinator, account) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
