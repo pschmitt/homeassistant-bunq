@@ -1,12 +1,14 @@
 """oAuth2 functions and classes for Bunq API integration."""
 from __future__ import annotations
 
+import json
 import sys
 from typing import Any
 
 from homeassistant.components.application_credentials import (
     AuthImplementation, AuthorizationServer, ClientCredential)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import ENVIRONMENT, ENVIRONMENT_URLS, LOGGER
 
@@ -68,27 +70,38 @@ class BunqOAuth2Implementation(AuthImplementation):
         redirect_uri = external_data["state"]["redirect_uri"]
         LOGGER.debug("async_resolve_external_data: redirect_uri=%s", redirect_uri)
 
-        # Send the grant parameters in the POST body, not the query string.
-        # _token_request() adds client_id/client_secret to the body itself, so
-        # embedding them (and the auth code) in the URL leaked secrets into any
-        # proxy/access log for no benefit. self.token_url already resolves to
-        # the configured token endpoint via the AuthImplementation property.
+        # bunq's OAuth token endpoint reads the grant parameters from the query
+        # string and rejects the request with `invalid_request: Missing required
+        # GET parameter "grant_type"` if they are sent in the POST body. This
+        # differs from the OAuth2 spec / HA's _token_request(), which form-encode
+        # them into the body, so we build the request ourselves and pass every
+        # parameter (including client credentials) as query parameters.
+        params = {
+            "grant_type": "authorization_code",
+            "code": external_data["code"],
+            "redirect_uri": redirect_uri,
+            "client_id": self.client_id,
+        }
+        if self.client_secret:
+            params["client_secret"] = self.client_secret
+
         LOGGER.debug(
-            "async_resolve_external_data: requesting token from %s",
-            ENVIRONMENT_URLS[ENVIRONMENT]["token_url"],
+            "async_resolve_external_data: requesting token from %s (params=%s)",
+            self.token_url,
+            sorted(params),
         )
 
-        try:
-            token = await self._token_request(
-                {
-                    "grant_type": "authorization_code",
-                    "code": external_data["code"],
-                    "redirect_uri": redirect_uri,
-                }
+        session = async_get_clientsession(self.hass)
+        resp = await session.post(self.token_url, params=params)
+        body = await resp.text()
+        if resp.status >= 400:
+            LOGGER.error(
+                "async_resolve_external_data: token request failed (%s): %s",
+                resp.status,
+                body[:300],
             )
-        except Exception as err:
-            LOGGER.error("async_resolve_external_data: token request failed: %s", err, exc_info=True)
-            raise
+            resp.raise_for_status()
+        token = json.loads(body)
 
         LOGGER.debug(
             "async_resolve_external_data: token received, keys=%s",
