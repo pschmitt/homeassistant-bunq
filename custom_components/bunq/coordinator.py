@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
                                                       UpdateFailed)
 
-from .bunq_api import BunqApi
+from .bunq_api import BunqApi, is_context_invalid_error
 from .const import CONF_ALLOW_DYNAMIC_IP, DOMAIN, ENVIRONMENT, LOGGER, UPDATE_INTERVAL
 from .exceptions import BunqApiError
 from .models import BunqStatus
@@ -51,4 +52,14 @@ class BunqDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             return await self.bunq.update()
         except BunqApiError as error:
+            # A credential/IP error that survived the in-API context rebuild
+            # (BunqApi._refresh_context) means a fresh device-server
+            # registration from the current IP was still rejected: the API key
+            # / OAuth credential is no longer valid. Raise ConfigEntryAuthFailed
+            # so Home Assistant surfaces a repair and lets the user re-register
+            # the API access, instead of silently staying unavailable.
+            if is_context_invalid_error(error):
+                raise ConfigEntryAuthFailed(
+                    f"bunq credentials rejected, re-registration required: {error}"
+                ) from error
             raise UpdateFailed(f"Invalid response from API: {error}") from error

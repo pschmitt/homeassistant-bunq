@@ -30,6 +30,37 @@ MONETARY_ACCOUNT_TYPES = [
     "MonetaryAccountExternal",
 ]
 
+# Substrings bunq returns (inside a 400 response) when the cached session is no
+# longer accepted because the source IP no longer matches the device-server
+# registration. This happens when the WAN IP changes while dynamic IP mode is
+# disabled. Rebuilding the context re-registers a device-server from the current
+# IP and recovers automatically, so we treat it like an expired session (401).
+CONTEXT_INVALID_MESSAGES = (
+    "User credentials are incorrect",
+    "Incorrect API key or IP address",
+)
+
+
+def is_context_invalid_error(error: BunqApiError) -> bool:
+    """Return True when the error means our session/context must be rebuilt.
+
+    bunq returns 401 when the session token has expired, and 400 with an
+    "Incorrect API key or IP address" message when the source IP no longer
+    matches the device-server registration (e.g. the WAN IP changed) or the
+    API key itself is no longer accepted. The IP case is recoverable by
+    re-establishing the context; a credential that is rejected even after a
+    fresh registration needs the user to re-authenticate.
+    """
+    status = error.args[0]
+    if status == 401:
+        return True
+    if status == 400 and len(error.args) > 1 and isinstance(error.args[1], dict):
+        for item in error.args[1].get("Error", []):
+            description = item.get("error_description", "")
+            if any(msg in description for msg in CONTEXT_INVALID_MESSAGES):
+                return True
+    return False
+
 
 class BunqApi:
     """main api class"""
@@ -187,16 +218,23 @@ class BunqApi:
         sign = signer.sign(digest)
         return b64encode(sign).decode("utf-8")
 
+    async def _refresh_context(self):
+        """Discard the cached session and rebuild it from the current IP."""
+        LOGGER.info(
+            "Re-establishing bunq context (session expired or source IP changed)"
+        )
+        self.status.update_user(None, None)
+        await self._setup_context()
+
     async def _update_accounts(self):
         try:
             LOGGER.debug("Try to update accounts")
             await self._update_accounts_no_retry()
         except BunqApiError as error:
             LOGGER.debug("Received error %s", str(error))
-            if error.args[0] == 401:
+            if is_context_invalid_error(error):
                 LOGGER.debug("Retry to update accounts")
-                self.status.update_user(None, None)
-                await self._setup_context()
+                await self._refresh_context()
                 await self._update_accounts_no_retry()
             else:
                 raise
@@ -238,10 +276,9 @@ class BunqApi:
             await self._update_cards_no_retry()
         except BunqApiError as error:
             LOGGER.debug("Received error %s", str(error))
-            if error.args[0] == 401:
+            if is_context_invalid_error(error):
                 LOGGER.debug("Retry to update cards")
-                self.status.update_user(None, None)
-                await self._setup_context()
+                await self._refresh_context()
                 await self._update_cards_no_retry()
             else:
                 raise

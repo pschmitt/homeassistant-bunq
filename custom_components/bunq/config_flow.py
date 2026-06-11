@@ -22,6 +22,11 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
     DOMAIN = DOMAIN
     VERSION = 1
 
+    # Dynamic IP choice carried from the reauth_confirm step through the OAuth
+    # redirect round-trip into async_oauth_create_entry. None means "leave the
+    # existing option untouched" (e.g. a fresh, non-reauth install).
+    _reauth_allow_dynamic_ip: bool | None = None
+
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow handler."""
@@ -40,11 +45,35 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Dialog that informs the user that reauth is required."""
+        """Confirm reauth and let the user choose the dynamic IP setting."""
         LOGGER.debug("async_step_reauth_confirm: user_input=%s", user_input is not None)
+
+        reauth_entry = self._get_reauth_entry()
+        default_dynamic_ip = bool(
+            reauth_entry.options.get(CONF_ALLOW_DYNAMIC_IP, False)
+            if reauth_entry
+            else False
+        )
+
         if user_input is None:
-            return self.async_show_form(step_id="reauth_confirm")
-        LOGGER.debug("async_step_reauth_confirm: confirmed, starting user step")
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_ALLOW_DYNAMIC_IP, default=default_dynamic_ip
+                        ): bool,
+                    }
+                ),
+            )
+
+        self._reauth_allow_dynamic_ip = bool(
+            user_input.get(CONF_ALLOW_DYNAMIC_IP, default_dynamic_ip)
+        )
+        LOGGER.debug(
+            "async_step_reauth_confirm: confirmed, allow_dynamic_ip=%s, starting user step",
+            self._reauth_allow_dynamic_ip,
+        )
         return await self.async_step_user()
 
     async def async_oauth_create_entry(self, data: dict[str, Any]) -> FlowResult:
@@ -62,6 +91,7 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
                 environment=ENVIRONMENT,
                 token=token["access_token"],
                 session=async_get_clientsession(self.hass),
+                allow_dynamic_ip=bool(self._reauth_allow_dynamic_ip),
             )
             status = await api.update()
         except Exception as err:
@@ -87,7 +117,12 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
         if existing_entry := await self.async_set_unique_id(unique_id):
             LOGGER.debug("async_oauth_create_entry: existing entry found, updating and reloading")
-            self.hass.config_entries.async_update_entry(existing_entry, data=data)
+            update_kwargs: dict[str, Any] = {"data": data}
+            if self._reauth_allow_dynamic_ip is not None:
+                options = dict(existing_entry.options)
+                options[CONF_ALLOW_DYNAMIC_IP] = self._reauth_allow_dynamic_ip
+                update_kwargs["options"] = options
+            self.hass.config_entries.async_update_entry(existing_entry, **update_kwargs)
             await self.hass.config_entries.async_reload(existing_entry.entry_id)
             return self.async_abort(reason="reauth_successful")
 

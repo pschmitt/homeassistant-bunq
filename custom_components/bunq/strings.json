@@ -1,4 +1,22 @@
 {
+  "config": {
+    "step": {
+      "reauth_confirm": {
+        "title": "Re-register bunq API access",
+        "description": "Your bunq API credentials were rejected, so the integration can no longer fetch data. Continue to re-authorize access with bunq. You can adjust the dynamic IP setting below before re-registering.",
+        "data": {
+          "allow_dynamic_ip": "Allow dynamic IP address"
+        },
+        "data_description": {
+          "allow_dynamic_ip": "Register the device server with a wildcard IP (`*`) instead of your current IP. Enable this if your ISP assigns a new IP address frequently. Note: this reduces account security."
+        }
+      }
+    },
+    "abort": {
+      "reauth_successful": "Re-authentication was successful.",
+      "oauth_error": "Could not register with the bunq API using these credentials. Make sure your bunq plan still includes API access."
+    }
+  },
   "options": {
     "step": {
       "init": {
