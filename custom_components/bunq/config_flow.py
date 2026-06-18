@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, OptionsFlow
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntry, OptionsFlow
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import \
@@ -115,18 +115,21 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
         unique_id = status.user_id.lower()
         LOGGER.debug("async_oauth_create_entry: setting unique_id=%s", unique_id)
 
-        if existing_entry := await self.async_set_unique_id(unique_id):
-            LOGGER.debug("async_oauth_create_entry: existing entry found, updating and reloading")
-            update_kwargs: dict[str, Any] = {"data": data}
+        # Reauth path: use _get_reauth_entry() — more reliable than async_set_unique_id
+        # in a reauth-flow context, and avoids blocking async_step_creation with a long
+        # await async_reload() that can cause a second OAuth code exchange attempt.
+        if self.source == SOURCE_REAUTH:
+            reauth_entry = self._get_reauth_entry()
+            LOGGER.debug("async_oauth_create_entry: reauth flow, updating entry %s", reauth_entry.entry_id)
             if self._reauth_allow_dynamic_ip is not None:
-                options = dict(existing_entry.options)
-                options[CONF_ALLOW_DYNAMIC_IP] = self._reauth_allow_dynamic_ip
-                update_kwargs["options"] = options
-            self.hass.config_entries.async_update_entry(existing_entry, **update_kwargs)
-            await self.hass.config_entries.async_reload(existing_entry.entry_id)
-            return self.async_abort(reason="reauth_successful")
+                new_options = dict(reauth_entry.options)
+                new_options[CONF_ALLOW_DYNAMIC_IP] = self._reauth_allow_dynamic_ip
+                return self.async_update_and_abort(reauth_entry, data=data, options=new_options)
+            return self.async_update_and_abort(reauth_entry, data=data)
 
         LOGGER.debug("async_oauth_create_entry: creating new config entry for user_id=%s", status.user_id)
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
         return self.async_create_entry(title=status.user_id, data=data)
 
 
