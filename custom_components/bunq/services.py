@@ -1,9 +1,8 @@
 import voluptuous as vol
-from .coordinator import BunqDataUpdateCoordinator
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
-from .exceptions import BunqApiError
+
 from .const import (
     ATTR_ACCOUNT_ENTITY,
     ATTR_ACCOUNT_ID,
@@ -16,6 +15,8 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
+from .coordinator import BunqDataUpdateCoordinator
+from .exceptions import BunqApiError
 
 SERVICE_TRANSFER_SCHEMA = vol.Schema(
     {
@@ -34,9 +35,7 @@ SERVICE_LINK_ACCOUNT_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup_services(
-    hass: HomeAssistant, coordinator: BunqDataUpdateCoordinator
-):
+async def async_setup_services(hass: HomeAssistant, coordinator: BunqDataUpdateCoordinator):
     """Setup services for bunq."""
 
     async def transfer_service(call):
@@ -48,25 +47,17 @@ async def async_setup_services(
         message = call.data.get(ATTR_MESSAGE) or ""
 
         if ATTR_ACCOUNT_ID not in hass.states.get(from_account_entity).attributes:
-            raise HomeAssistantError(
-                f"Could not find account id for entity {from_account_entity}"
-            )
-        from_account_id = hass.states.get(from_account_entity).attributes[
-            ATTR_ACCOUNT_ID
-        ]
+            raise HomeAssistantError(f"Could not find account id for entity {from_account_entity}")
+        from_account_id = hass.states.get(from_account_entity).attributes[ATTR_ACCOUNT_ID]
         if ATTR_ACCOUNT_ID not in hass.states.get(to_account_entity).attributes:
-            raise HomeAssistantError(
-                f"Could not find account id for entity {to_account_entity}"
-            )
+            raise HomeAssistantError(f"Could not find account id for entity {to_account_entity}")
         to_account_id = hass.states.get(to_account_entity).attributes[ATTR_ACCOUNT_ID]
 
         LOGGER.debug(
             f"transfer {amount} from {from_account_id} to {to_account_id} (message: '{message}')"
         )
         try:
-            await coordinator.bunq.transfer(
-                from_account_id, to_account_id, amount, message
-            )
+            await coordinator.bunq.transfer(from_account_id, to_account_id, amount, message)
         except BunqApiError as e:
             raise HomeAssistantError(e.get_message()) from e
 
@@ -81,9 +72,7 @@ async def async_setup_services(
         card_id = hass.states.get(card_entity).attributes[ATTR_CARD_ID]
 
         if ATTR_ACCOUNT_ID not in hass.states.get(account_entity).attributes:
-            raise HomeAssistantError(
-                f"Could not find account id for entity {account_entity}"
-            )
+            raise HomeAssistantError(f"Could not find account id for entity {account_entity}")
         account_id = hass.states.get(account_entity).attributes[ATTR_ACCOUNT_ID]
 
         LOGGER.debug(f"Linking account {account_id} to card {card_id}")

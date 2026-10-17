@@ -1,18 +1,18 @@
 {
-	"domain": "bunq",
-	"name": "bunq",
-	"version": "3.0.0",
-	"documentation": "https://github.com/pschmitt/homeassistant-bunq",
-	"issue_tracker": "https://github.com/pschmitt/homeassistant-bunq/issues",
-	"iot_class": "cloud_polling",
-	"requirements": [
-		"pycryptodomex>=3.0"
-	],
-	"codeowners": [
-		"@pschmitt"
-	],
-	"config_flow": true,
-	"dependencies": [
-		"application_credentials"
-	]
+  "domain": "bunq",
+  "name": "bunq",
+  "codeowners": [
+    "@pschmitt"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "application_credentials"
+  ],
+  "documentation": "https://github.com/pschmitt/homeassistant-bunq",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/pschmitt/homeassistant-bunq/issues",
+  "requirements": [
+    "pycryptodomex>=3.0"
+  ],
+  "version": "3.0.0"
 }

@@ -1,15 +1,16 @@
-""" Bunq api class """
+"""Bunq api class"""
 
 import asyncio
 import json
 import socket
 import uuid
 from base64 import b64encode
-from typing import Any, Awaitable, Callable, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from aiohttp import ClientError, ClientSession, hdrs
-from Cryptodome.PublicKey import RSA
 from Cryptodome.Hash import SHA256
+from Cryptodome.PublicKey import RSA
 from Cryptodome.PublicKey.RSA import RsaKey
 from Cryptodome.Signature import PKCS1_v1_5
 
@@ -73,8 +74,8 @@ class BunqApi:
         environment: BunqApiEnvironment,
         token: str,
         request_timeout: int = 8,
-        session: Optional[ClientSession] = None,
-        token_refresh_method: Optional[Callable[[], Awaitable[str]]] = None,
+        session: ClientSession | None = None,
+        token_refresh_method: Callable[[], Awaitable[str]] | None = None,
         allow_dynamic_ip: bool = False,
     ) -> None:
         """Initialize connection with the Bunq API."""
@@ -129,7 +130,7 @@ class BunqApi:
                     **kwargs,
                     headers=headers,
                 )
-        except asyncio.TimeoutError as exception:
+        except TimeoutError as exception:
             raise BunqApiConnectionTimeoutError(
                 "Timeout occurred while connecting to the Bunq API"
             ) from exception
@@ -145,9 +146,7 @@ class BunqApi:
             response.close()
             LOGGER.debug("Error response (status %d): %s", response.status, contents)
             if response.status == 429:
-                raise BunqApiRateLimitError(
-                    "Rate limit error has occurred with the Bunq API"
-                )
+                raise BunqApiRateLimitError("Rate limit error has occurred with the Bunq API")
 
             if content_type == "application/json":
                 raise BunqApiError(response.status, json.loads(contents.decode("utf8")))
@@ -220,9 +219,7 @@ class BunqApi:
 
     async def _refresh_context(self):
         """Discard the cached session and rebuild it from the current IP."""
-        LOGGER.info(
-            "Re-establishing bunq context (session expired or source IP changed)"
-        )
+        LOGGER.info("Re-establishing bunq context (session expired or source IP changed)")
         self.status.update_user(None, None)
         await self._setup_context()
 
@@ -244,19 +241,14 @@ class BunqApi:
         LOGGER.debug("get_active_accounts response: %s", data)
         accounts = []
         for value in data["Response"]:
-            for account_type in [
-                key for key in value if key in MONETARY_ACCOUNT_TYPES
-            ]:
+            for account_type in [key for key in value if key in MONETARY_ACCOUNT_TYPES]:
                 item = value[account_type]
                 if "status" in item and item["status"] == "ACTIVE":
                     item["_account_type"] = account_type
                     if account_type == "MonetaryAccountExternal":
                         # bunq always returns balance=0.00 for external accounts.
                         # The real balance lives in open_banking_account.balance_booked.
-                        oba = (
-                            item.get("open_banking_account", {})
-                            .get("OpenBankingAccount", {})
-                        )
+                        oba = item.get("open_banking_account", {}).get("OpenBankingAccount", {})
                         booked = oba.get("balance_booked")
                         if booked:
                             LOGGER.debug(
@@ -288,9 +280,7 @@ class BunqApi:
         LOGGER.debug("get cards response: %s", data)
         cards = []
         for value in data["Response"]:
-            for card_type in [
-                key for key in value if key in ["CardDebit", "CardCredit"]
-            ]:
+            for card_type in [key for key in value if key in ["CardDebit", "CardCredit"]]:
                 item = value[card_type]
                 if "status" in item and item["status"] == "ACTIVE":
                     cards.append(item)
@@ -395,9 +385,7 @@ class BunqApi:
             return
         self.keys = RSA.generate(2048)
         public_key_client = (
-            self.keys.publickey()
-            .export_key(format="PEM", passphrase=None, pkcs=8)
-            .decode("utf-8")
+            self.keys.publickey().export_key(format="PEM", passphrase=None, pkcs=8).decode("utf-8")
         )
 
         installation = await self._request(
@@ -414,7 +402,9 @@ class BunqApi:
         }
         if self.allow_dynamic_ip:
             body["permitted_ips"] = ["*"]
-            LOGGER.info("Registering device server with wildcard permitted_ips (dynamic IP mode enabled)")
+            LOGGER.info(
+                "Registering device server with wildcard permitted_ips (dynamic IP mode enabled)"
+            )
         await self._request(
             hdrs.METH_POST, "/v1/device-server", token=installation_token, json=body
         )

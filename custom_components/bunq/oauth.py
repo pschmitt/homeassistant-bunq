@@ -1,4 +1,5 @@
 """oAuth2 functions and classes for Bunq API integration."""
+
 from __future__ import annotations
 
 import json
@@ -6,7 +7,10 @@ import sys
 from typing import Any
 
 from homeassistant.components.application_credentials import (
-    AuthImplementation, AuthorizationServer, ClientCredential)
+    AuthImplementation,
+    AuthorizationServer,
+    ClientCredential,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -49,11 +53,16 @@ class BunqOAuth2Implementation(AuthImplementation):
         LOGGER.debug(
             "async_resolve_external_data: received external_data keys=%s, state keys=%s",
             list(external_data.keys()) if isinstance(external_data, dict) else type(external_data),
-            list(external_data.get("state", {}).keys()) if isinstance(external_data, dict) else "n/a",
+            list(external_data.get("state", {}).keys())
+            if isinstance(external_data, dict)
+            else "n/a",
         )
 
         if "state" not in external_data:
-            LOGGER.error("async_resolve_external_data: 'state' key missing from external_data. Full keys: %s", list(external_data.keys()))
+            LOGGER.error(
+                "async_resolve_external_data: 'state' key missing from external_data. Full keys: %s",
+                list(external_data.keys()),
+            )
             raise KeyError("'state' missing from external_data")
 
         if "redirect_uri" not in external_data["state"]:
@@ -64,7 +73,10 @@ class BunqOAuth2Implementation(AuthImplementation):
             raise KeyError("'redirect_uri' missing from state")
 
         if "code" not in external_data:
-            LOGGER.error("async_resolve_external_data: 'code' missing from external_data. Keys: %s", list(external_data.keys()))
+            LOGGER.error(
+                "async_resolve_external_data: 'code' missing from external_data. Keys: %s",
+                list(external_data.keys()),
+            )
             raise KeyError("'code' missing from external_data")
 
         redirect_uri = external_data["state"]["redirect_uri"]
@@ -116,5 +128,7 @@ class BunqOAuth2Implementation(AuthImplementation):
 
     async def _async_refresh_token(self, token: dict) -> dict:
         """Bunq does not provide a way to refresh the token."""
-        LOGGER.debug("_async_refresh_token: bunq does not support token refresh, returning existing token")
+        LOGGER.debug(
+            "_async_refresh_token: bunq does not support token refresh, returning existing token"
+        )
         return dict(token)

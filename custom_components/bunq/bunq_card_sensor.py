@@ -1,4 +1,4 @@
-""" bunq sensor"""
+"""bunq sensor"""
 
 from homeassistant.components.sensor import (
     SensorEntity,

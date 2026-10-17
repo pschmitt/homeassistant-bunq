@@ -1,4 +1,5 @@
 """Provides the Bunq DataUpdateCoordinator."""
+
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -6,8 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
-from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
-                                                      UpdateFailed)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .bunq_api import BunqApi, is_context_invalid_error
 from .const import CONF_ALLOW_DYNAMIC_IP, DOMAIN, ENVIRONMENT, LOGGER, UPDATE_INTERVAL
@@ -18,9 +18,7 @@ from .models import BunqStatus
 class BunqDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Bunq data from single endpoint."""
 
-    def __init__(
-        self, hass: HomeAssistant, *, entry: ConfigEntry, session: OAuth2Session
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, *, entry: ConfigEntry, session: OAuth2Session) -> None:
         """Initialize global Bunq data updater."""
         self.session = session
         self.entry = entry

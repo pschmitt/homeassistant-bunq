@@ -1,4 +1,5 @@
 """Config flow for Bunq."""
+
 from __future__ import annotations
 
 import logging
@@ -9,8 +10,7 @@ import voluptuous as vol
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntry, OptionsFlow
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.config_entry_oauth2_flow import \
-    AbstractOAuth2FlowHandler
+from homeassistant.helpers.config_entry_oauth2_flow import AbstractOAuth2FlowHandler
 
 from .bunq_api import BunqApi
 from .const import CONF_ALLOW_DYNAMIC_IP, DOMAIN, ENVIRONMENT, LOGGER
@@ -50,9 +50,7 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
         reauth_entry = self._get_reauth_entry()
         default_dynamic_ip = bool(
-            reauth_entry.options.get(CONF_ALLOW_DYNAMIC_IP, False)
-            if reauth_entry
-            else False
+            reauth_entry.options.get(CONF_ALLOW_DYNAMIC_IP, False) if reauth_entry else False
         )
 
         if user_input is None:
@@ -60,9 +58,7 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
                 step_id="reauth_confirm",
                 data_schema=vol.Schema(
                     {
-                        vol.Optional(
-                            CONF_ALLOW_DYNAMIC_IP, default=default_dynamic_ip
-                        ): bool,
+                        vol.Optional(CONF_ALLOW_DYNAMIC_IP, default=default_dynamic_ip): bool,
                     }
                 ),
             )
@@ -78,7 +74,10 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
     async def async_oauth_create_entry(self, data: dict[str, Any]) -> FlowResult:
         """Create an oauth config entry or update existing entry for reauth."""
-        LOGGER.debug("async_oauth_create_entry: received token data keys=%s", list(data.get("token", {}).keys()))
+        LOGGER.debug(
+            "async_oauth_create_entry: received token data keys=%s",
+            list(data.get("token", {}).keys()),
+        )
 
         token = data.get("token", {})
         if not token.get("access_token"):
@@ -95,7 +94,9 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
             )
             status = await api.update()
         except Exception as err:
-            LOGGER.error("async_oauth_create_entry: BunqApi.update() failed: %s", err, exc_info=True)
+            LOGGER.error(
+                "async_oauth_create_entry: BunqApi.update() failed: %s", err, exc_info=True
+            )
             return self.async_abort(reason="oauth_error")
 
         LOGGER.debug(
@@ -120,14 +121,18 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
         # await async_reload() that can cause a second OAuth code exchange attempt.
         if self.source == SOURCE_REAUTH:
             reauth_entry = self._get_reauth_entry()
-            LOGGER.debug("async_oauth_create_entry: reauth flow, updating entry %s", reauth_entry.entry_id)
+            LOGGER.debug(
+                "async_oauth_create_entry: reauth flow, updating entry %s", reauth_entry.entry_id
+            )
             if self._reauth_allow_dynamic_ip is not None:
                 new_options = dict(reauth_entry.options)
                 new_options[CONF_ALLOW_DYNAMIC_IP] = self._reauth_allow_dynamic_ip
                 return self.async_update_and_abort(reauth_entry, data=data, options=new_options)
             return self.async_update_and_abort(reauth_entry, data=data)
 
-        LOGGER.debug("async_oauth_create_entry: creating new config entry for user_id=%s", status.user_id)
+        LOGGER.debug(
+            "async_oauth_create_entry: creating new config entry for user_id=%s", status.user_id
+        )
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
         return self.async_create_entry(title=status.user_id, data=data)
@@ -136,9 +141,7 @@ class BunqFlowHandler(AbstractOAuth2FlowHandler, domain=DOMAIN):
 class BunqOptionsFlowHandler(OptionsFlow):
     """Handle bunq options."""
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage bunq options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
@@ -149,9 +152,7 @@ class BunqOptionsFlowHandler(OptionsFlow):
                 {
                     vol.Optional(
                         CONF_ALLOW_DYNAMIC_IP,
-                        default=self.config_entry.options.get(
-                            CONF_ALLOW_DYNAMIC_IP, False
-                        ),
+                        default=self.config_entry.options.get(CONF_ALLOW_DYNAMIC_IP, False),
                     ): bool,
                 }
             ),

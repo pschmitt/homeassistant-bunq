@@ -2,9 +2,11 @@
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.config_entry_oauth2_flow import (
-    OAuth2Session, async_get_config_entry_implementation)
+    OAuth2Session,
+    async_get_config_entry_implementation,
+)
 
 from .const import DOMAIN
 from .coordinator import BunqDataUpdateCoordinator

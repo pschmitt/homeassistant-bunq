@@ -83,9 +83,7 @@ class BunqLastTransactionEvent(CoordinatorEntity[BunqDataUpdateCoordinator], Eve
                     "amount": amount_obj.get("value"),
                     "currency": amount_obj.get("currency"),
                     "description": latest.get("description"),
-                    "counterparty": (latest.get("counterparty_alias") or {}).get(
-                        "display_name"
-                    ),
+                    "counterparty": (latest.get("counterparty_alias") or {}).get("display_name"),
                 },
             )
             return  # _trigger_event already calls async_write_ha_state

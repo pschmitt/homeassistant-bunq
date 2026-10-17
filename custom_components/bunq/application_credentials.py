@@ -1,4 +1,5 @@
 """Application credentials platform for bunq."""
+
 from homeassistant.components.application_credentials import ClientCredential
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_entry_oauth2_flow
