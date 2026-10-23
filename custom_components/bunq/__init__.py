@@ -22,15 +22,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     oauth_session = OAuth2Session(hass, entry, implementation)
     coordinator = BunqDataUpdateCoordinator(hass, entry=entry, session=oauth_session)
 
-    await coordinator.async_config_entry_first_refresh()
-
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+    if coordinator.data is None:
+        coordinator.last_update_success = False
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_setup_services(hass, coordinator)
 
     entry.async_on_unload(entry.add_update_listener(async_update_options))
 
+    entry.async_create_background_task(hass, coordinator.async_refresh(), "bunq_first_refresh")
     return True
 
 

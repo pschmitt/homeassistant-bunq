@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .bunq_balance_sensor import BunqBalanceSensor
@@ -17,11 +17,24 @@ async def async_setup_entry(
 ) -> None:
     """Set up a bunq sensor entry."""
     coordinator: BunqDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    sensors = []
-    for account in coordinator.bunq.status.accounts:
-        sensors.append(BunqBalanceSensor(coordinator, account))
+    known_accounts: set[str] = set()
+    known_cards: set[str] = set()
 
-    for card in coordinator.bunq.status.cards:
-        sensors.append(BunqCardSensor(coordinator, card))
+    @callback
+    def _add_missing() -> None:
+        sensors = []
+        for account in coordinator.bunq.status.accounts:
+            key = str(account["id"])
+            if key not in known_accounts:
+                known_accounts.add(key)
+                sensors.append(BunqBalanceSensor(coordinator, account))
+        for card in coordinator.bunq.status.cards:
+            key = str(card["id"])
+            if key not in known_cards:
+                known_cards.add(key)
+                sensors.append(BunqCardSensor(coordinator, card))
+        if sensors:
+            async_add_entities(sensors)
 
-    async_add_entities(sensors)
+    _add_missing()
+    entry.async_on_unload(coordinator.async_add_listener(_add_missing))
