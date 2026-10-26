@@ -144,7 +144,7 @@ class BunqApi:
         if (response.status // 100) in [4, 5]:
             contents = await response.read()
             response.close()
-            LOGGER.debug("Error response (status %d): %s", response.status, contents)
+            LOGGER.debug("Error response (status %d)", response.status)
             if response.status == 429:
                 raise BunqApiRateLimitError("Rate limit error has occurred with the Bunq API")
 
@@ -186,10 +186,10 @@ class BunqApi:
             except BunqApiError as error:
                 account_type = account.get("_account_type", "unknown")
                 LOGGER.warning(
-                    "Could not fetch transactions for account %s (type: %s): %s",
+                    "Could not fetch transactions for account %s (type: %s, status: %s)",
                     account["id"],
                     account_type,
-                    error,
+                    error.args[0],
                 )
                 self.status.update_account_transactions(account["id"], [])
 
@@ -209,7 +209,7 @@ class BunqApi:
                 return value["Token"]["token"]
 
     def _generate_signature(self, string_to_sign: str, keys: RsaKey) -> str:
-        LOGGER.debug("signing %s", string_to_sign)
+        LOGGER.debug("Signing bunq API request")
         bytes_to_sign = string_to_sign.encode()
         signer = PKCS1_v1_5.new(keys)
         digest = SHA256.new()
@@ -228,7 +228,7 @@ class BunqApi:
             LOGGER.debug("Try to update accounts")
             await self._update_accounts_no_retry()
         except BunqApiError as error:
-            LOGGER.debug("Received error %s", str(error))
+            LOGGER.debug("Account fetch failed with status %s", error.args[0])
             if is_context_invalid_error(error):
                 LOGGER.debug("Retry to update accounts")
                 await self._refresh_context()
@@ -238,12 +238,16 @@ class BunqApi:
 
     async def _update_accounts_no_retry(self):
         data = await self._fetch_monetary_accounts()
-        LOGGER.debug("get_active_accounts response: %s", data)
+        joint_data = await self._fetch_monetary_accounts_joint()
         accounts = []
-        for value in data["Response"]:
-            for account_type in [key for key in value if key in MONETARY_ACCOUNT_TYPES]:
-                item = value[account_type]
-                if "status" in item and item["status"] == "ACTIVE":
+        seen_ids = set()
+        for response in (data, joint_data):
+            for value in response["Response"]:
+                for account_type in [key for key in value if key in MONETARY_ACCOUNT_TYPES]:
+                    item = value[account_type]
+                    if item.get("status") != "ACTIVE" or item["id"] in seen_ids:
+                        continue
+                    seen_ids.add(item["id"])
                     item["_account_type"] = account_type
                     if account_type == "MonetaryAccountExternal":
                         # bunq always returns balance=0.00 for external accounts.
@@ -251,14 +255,9 @@ class BunqApi:
                         oba = item.get("open_banking_account", {}).get("OpenBankingAccount", {})
                         booked = oba.get("balance_booked")
                         if booked:
-                            LOGGER.debug(
-                                "External account %s: using balance_booked %s (was %s)",
-                                item.get("id"),
-                                booked,
-                                item.get("balance"),
-                            )
                             item["balance"] = booked
                     accounts.append(item)
+        LOGGER.debug("Updated %d active monetary accounts", len(accounts))
         self.status.update_accounts(accounts)
 
     async def _update_cards(self):
@@ -267,7 +266,7 @@ class BunqApi:
             LOGGER.debug("Try to update cards")
             await self._update_cards_no_retry()
         except BunqApiError as error:
-            LOGGER.debug("Received error %s", str(error))
+            LOGGER.debug("Card fetch failed with status %s", error.args[0])
             if is_context_invalid_error(error):
                 LOGGER.debug("Retry to update cards")
                 await self._refresh_context()
@@ -277,7 +276,6 @@ class BunqApi:
 
     async def _update_cards_no_retry(self):
         data = await self._fetch_cards()
-        LOGGER.debug("get cards response: %s", data)
         cards = []
         for value in data["Response"]:
             for card_type in [key for key in value if key in ["CardDebit", "CardCredit"]]:
@@ -285,17 +283,18 @@ class BunqApi:
                 if "status" in item and item["status"] == "ACTIVE":
                     cards.append(item)
         self.status.update_cards(cards)
+        LOGGER.debug("Updated %d active cards", len(cards))
 
     async def update_account_transactions(self, account_id):
         """Get transactions of an account."""
         data = await self._fetch_monetary_account_transactions(account_id)
-        LOGGER.debug("get_account_transactions response: %s", data)
         transactions = []
         for value in data["Response"]:
             if "Payment" in value:
                 item = value["Payment"]
                 transactions.append(item)
         self.status.update_account_transactions(account_id, transactions)
+        LOGGER.debug("Fetched %d transactions for account %s", len(transactions), account_id)
 
     async def _fetch_monetary_account_transactions(self, account_id):
         return await self._request(
@@ -308,6 +307,13 @@ class BunqApi:
         return await self._request(
             hdrs.METH_GET,
             f"/v1/user/{self.status.user_id}/monetary-account?count=25",
+            token=self.status.session_token,
+        )
+
+    async def _fetch_monetary_accounts_joint(self):
+        return await self._request(
+            hdrs.METH_GET,
+            f"/v1/user/{self.status.user_id}/monetary-account-joint?count=25",
             token=self.status.session_token,
         )
 
@@ -344,7 +350,7 @@ class BunqApi:
             signature=signature,
             data=str_body,
         )
-        LOGGER.debug("link account response: %s", result)
+        LOGGER.debug("Linked account %s to card %s", account_id, card_id)
 
         return result
 
@@ -376,7 +382,7 @@ class BunqApi:
             signature=signature,
             data=str_body,
         )
-        LOGGER.debug("transfer response: %s", result)
+        LOGGER.debug("Transfer submitted from account %s", from_account_id)
         return result
 
     async def _setup_context(self):
