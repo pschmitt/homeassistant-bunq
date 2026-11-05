@@ -1,20 +1,28 @@
-# bunq for Home Assistant
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&amp;repository=homeassistant-bunq&amp;category=integration"><img src="https://my.home-assistant.io/badges/marketplace_repository.svg" alt="Open this integration in Home Assistant Marketplace"></a>
+</p>
 
-[![Open this integration in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&repository=homeassistant-bunq&category=integration)
+<h1 align="center">bunq for Home Assistant</h1>
 
-Home Assistant integration for bunq bank accounts. This is a fork of
-[ben8p/home-assistant-bunq-balance-sensors](https://github.com/ben8p/home-assistant-bunq-balance-sensors).
+<p align="center">Read bunq account balances and transactions as Home Assistant sensors.</p>
+
+This is a fork of [bunq Balance Sensors](https://github.com/ben8p/home-assistant-bunq-balance-sensors).
 
 ## Features
 
-- **External accounts:** Supports `MonetaryAccountExternal` via bunq Open Banking.
-- **Device grouping:** Groups account entities under one bunq device.
-- **Transaction polling:** Handles transaction fetch failures for external accounts.
+- **External accounts:** Include `MonetaryAccountExternal` balances through bunq Open Banking.
+- **Device grouping:** Group account entities under one bunq device.
+- **Transaction polling:** Keep account sensors available when transaction retrieval fails for an external account.
 
 ## Install
 
-Use the badge to add the repository as a custom integration in Home Assistant
-Marketplace (Home Assistant 2026.11 or later), then install it and restart Home
-Assistant. On older versions, add this repository in HACS as a custom
-integration. Go to **Settings → Devices & services → Add integration**, select
-**bunq**, and complete the OAuth2 setup.
+Use the Marketplace badge above on Home Assistant 2026.11 or later to add this
+repository as a custom integration. On older versions, add it as a HACS
+custom repository of type **Integration**. Install and restart Home Assistant.
+The badge does not imply a public catalog listing.
+
+## Quick start
+
+1. Add **bunq** under **Settings → Devices & services → Add integration**.
+2. Complete the OAuth2 setup for your bunq account.
+3. Inspect your account balance and transaction sensors.
