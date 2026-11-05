@@ -1,109 +1,37 @@
-[![Open this integration in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&repository=homeassistant-bunq&category=integration)
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&amp;repository=homeassistant-bunq&amp;category=integration"><img src="https://my.home-assistant.io/badges/marketplace_repository.svg" alt="Open this integration in Home Assistant Marketplace"></a>
+</p>
 
-# Bunq Integration
+<h1 align="center">bunq for Home Assistant</h1>
 
-For Home Assistant 2026.11 or later, use the Marketplace badge to add this
-repository as a custom integration, install it, and restart Home Assistant.
-For older versions, add this repository as a custom integration in HACS.
-The badge does not indicate a public catalog listing.
+<p align="center">Read bunq account balances and transactions in Home Assistant through OAuth.</p>
 
-This integration provides access to Bunq:
+## Features
 
-- monetary account balance sensors including transactions
-- debit- and creditcard sensors with a reference to the linked account
-- a service to transfer funds to own accounts
-- a service to link an account to a card.
+- **Account sensors:** Show monetary-account balances and recent transactions.
+- **Card sensors:** Show debit and credit cards with references to linked accounts.
+- **Account actions:** Transfer funds between your own accounts and link an account to a card where supported.
+- **OAuth configuration:** Connect through the Home Assistant UI instead of a YAML API key. See [OAuth setup](docs/setup.md).
 
-# ⚠️⚠️⚠️⚠️⚠️ Backward incompatibility ⚠️⚠️⚠️⚠️⚠️
+## Install
 
-Version 1.0.0 of the integration was using `configuration.yaml` and bunq api key.
-This is now fully deprecated. It won't work anymore.
-It was replaced by oauth.
+Use the Marketplace badge above on Home Assistant 2026.11 or later to add this
+repository as a custom integration. On older versions, add it as a HACS
+custom repository of type **Integration**. Install and restart Home Assistant.
+The badge does not imply a public catalog listing. This branch requires Home
+Assistant 2023.6.1 or later; see [OAuth setup](docs/setup.md) if upgrading
+from the old API-key integration.
 
-If you are upgrading, before installing version 2.0.0 you should:
+## Quick start
 
--   uninstall the previous integration
--   and clean up the configuration.yaml
+1. Add an OAuth redirect URL in your bunq app's developer settings.
+2. Add **bunq** under **Settings → Devices & services → Add integration** and enter your OAuth client details.
+3. Link your account through the authorization flow and inspect the balance sensors.
 
-# Minimum version for HA
+## Documentation
 
-2023.6.1+
-
-## Integration configuration
-
-Simply follow the config flow.
-The integration uses oauth.
-In order to get the "client id" and the "client secret" follow these steps:
-
--   Open the bunq app
--   Go to "Profile"
--   Go to "Developers"
--   Click OAuth
--   Click "Add redirect URL"
--   Enter "https://my.home-assistant.io/redirect/oauth"
--   Click "Done"
--   Click "SHOW CLIENT DETAILS"
--   use the values when configuring the integration
-
-Note:
-During the configuration process you will be redirected to `https://my.home-assistant.io`.
-There, you need to enter the address on which your home assistant can be reached (it can be local ip/dns or external one)
-Then click on "Link Account"
-
-## Why oauth instead of API Key ?
-
-oauth is much safer. API keys gives all writes to your accounts (including money transfert).
-However, oauth only allow reading.
-
-## Displaying transaction details
-
-Each account sensor can show the balance as well as a list of transactions.  
-You can use the custom card [html-template-card](https://github.com/piotrmachowski/home-assistant-lovelace-html-jinja2-template-card) to display them.
-
-Example of configuration:
-
-```yaml
-type: "custom:html-template-card"
-title: Transactions
-ignore_line_breaks: true
-content: >
-    <style>.bunq_table { width:100% } .bunq_table tr:nth-child(even) {background:
-    var(--material-secondary-background-color)}</style>
-    <table class="bunq_table">
-        <tr>
-            <th>Amount</th> <th>Description</th> <th>Time</th>
-        </tr>
-
-        {% for transaction in state_attr('sensor.bunq_groceries', 'transactions') %}
-        <tr>
-            <td style="width: 20%;text-align:right">
-            {{ transaction.amount }}&nbsp;{{ transaction.currency }}
-            </td>
-
-            <td style="padding:0 0.5em">
-            {{ transaction.description }}
-            </td>
-
-            <td style="width: 20%;">
-            {{ strptime(transaction.created, '%Y-%m-%d %H:%M:%S.%f') | relative_time }}
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-```
-
-## CHANGELOG
-
-#### V2.1.0
-
--   Add card sensor and service
--   Add transfer service
-
-#### V2.0.0
-
--   Replace api_key by oauth
--   Modernize all the code
-
-#### V1.0.0
-
--   Initial version
+| Topic | Description |
+|-------|-------------|
+| [OAuth setup](docs/setup.md) | Developer-app credentials and upgrade guidance |
+| [Transactions](docs/transactions.md) | Sensor transactions and an example dashboard card |
+| [Changelog](CHANGELOG.md) | Release history |
