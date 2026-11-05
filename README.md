@@ -1,6 +1,11 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![Open this integration in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&repository=homeassistant-bunq&category=integration)
 
 # Bunq Integration
+
+For Home Assistant 2026.11 or later, use the Marketplace badge to add this
+repository as a custom integration, install it, and restart Home Assistant.
+For older versions, add this repository as a custom integration in HACS.
+The badge does not indicate a public catalog listing.
 
 This integration provides access to Bunq:
 
